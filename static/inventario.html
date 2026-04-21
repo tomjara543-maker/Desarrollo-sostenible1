@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style1.css">
+</head>
+<body class="bg-light">
+
+<div class="container mt-4">
+    <h1>Gestión de Inventario</h1>
+
+    <a href="/" class="btn btn-secondary mb-3">← Volver</a>
+
+    <div class="row">
+        <div class="col"><input id="nombre" class="form-control" placeholder="Nombre"></div>
+        <div class="col"><input id="cantidad" type="number" class="form-control" placeholder="Cantidad"></div>
+        <div class="col"><input id="precio" type="number" class="form-control" placeholder="Precio"></div>
+        <div class="col"><button class="btn btn-success w-100" onclick="agregar()">Agregar</button></div>
+    </div>
+
+    <input id="buscar" class="form-control mt-3" placeholder="Buscar..." onkeyup="cargar()">
+
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Cantidad</th>
+                <th>Precio</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tabla"></tbody>
+    </table>
+
+    <!-- 🔥 HISTORIAL -->
+    <h3 class="mt-5">Historial de movimientos</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Acción</th>
+                <th>Producto</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody id="historial"></tbody>
+    </table>
+
+</div>
+
+<script>
+let productosGlobal = [];
+
+async function cargar(){
+    const res = await fetch('/productos');
+    const data = await res.json();
+    productosGlobal = data;
+
+    const filtro = document.getElementById('buscar').value.toLowerCase();
+    const tabla = document.getElementById('tabla');
+    tabla.innerHTML = '';
+
+    data.forEach(p=>{
+        if(p[1].toLowerCase().includes(filtro)){
+            let color = p[2] < 5 ? 'table-danger' : '';
+            tabla.innerHTML += `
+            <tr class="${color}">
+                <td>${p[1]}</td>
+                <td>${p[2]}</td>
+                <td>$${p[3]}</td>
+                <td>
+                    <button class="btn btn-warning btn-sm" onclick="editar(${p[0]})">Editar</button>
+                    <button class="btn btn-danger btn-sm" onclick="eliminar(${p[0]})">X</button>
+                </td>
+            </tr>`;
+        }
+    });
+
+    cargarHistorial(); // 🔥 IMPORTANTE
+}
+
+// 🔥 HISTORIAL
+async function cargarHistorial(){
+    const res = await fetch('/historial');
+    const data = await res.json();
+
+    const tabla = document.getElementById('historial');
+    tabla.innerHTML = '';
+
+    data.forEach(h=>{
+        tabla.innerHTML += `
+        <tr>
+            <td>${h[1]}</td>
+            <td>${h[2]}</td>
+            <td>${h[3]}</td>
+        </tr>`;
+    });
+}
+
+async function agregar(){
+    const nombre = document.getElementById('nombre').value;
+    const cantidad = document.getElementById('cantidad').value;
+    const precio = document.getElementById('precio').value;
+
+    await fetch('/productos',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({nombre,cantidad,precio})
+    });
+
+    cargar();
+}
+
+async function eliminar(id){
+    await fetch('/productos/'+id,{method:'DELETE'});
+    cargar();
+}
+
+function editar(id){
+    const p = productosGlobal.find(x=>x[0]==id);
+    const nombre = prompt("Nombre", p[1]);
+    const cantidad = prompt("Cantidad", p[2]);
+    const precio = prompt("Precio", p[3]);
+
+    fetch('/productos/'+id,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({nombre,cantidad,precio})
+    }).then(()=>cargar());
+}
+
+cargar();
+</script>
+
+</body>
+</html>

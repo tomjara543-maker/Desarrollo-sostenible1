@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5 text-center">
+    <h1>Bienvendio al Sistema</h1>
+    <p class="lead">Sistema de inventario</p>
+
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card p-3">
+                <h4>Total Productos</h4>
+                <h2 id="total"></h2>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card p-3">
+                <h4>Stock Bajo</h4>
+                <h2 id="bajo"></h2>
+            </div>
+        </div>
+    </div>
+
+    <a href="/inventario" class="btn btn-primary mt-4">Ir al Inventario</a>
+
+    <!-- 🔥 GRAFICA -->
+    <div class="mt-5">
+        <h3>Productos agregados por día</h3>
+        <canvas id="grafica"></canvas>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+async function cargar(){
+    const res = await fetch('/productos');
+    const data = await res.json();
+
+    document.getElementById('total').innerText = data.length;
+    document.getElementById('bajo').innerText = data.filter(p=>p[2]<5).length;
+}
+
+// 🔥 CARGAR GRAFICA
+async function cargarGrafica(){
+    const res = await fetch('/reportes');
+    const data = await res.json();
+
+    const fechas = data.map(d => d[0]);
+    const valores = data.map(d => d[1]);
+
+    new Chart(document.getElementById('grafica'), {
+        type: 'line',
+        data: {
+            labels: fechas,
+            datasets: [{
+                label: 'Productos agregados',
+                data: valores,
+                borderWidth: 2
+            }]
+        }
+    });
+}
+
+cargar();
+cargarGrafica();
+</script>
+
+</body>
+</html>
