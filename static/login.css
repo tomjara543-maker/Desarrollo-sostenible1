@@ -1,0 +1,103 @@
+body{
+    margin:0;
+    padding:0;
+    height:100vh;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.login-container{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.login-card{
+
+    background:white;
+
+    width:400px;
+
+    padding:40px;
+
+    border-radius:25px;
+
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+
+    text-align:center;
+
+    animation: aparecer 0.5s ease;
+}
+
+.login-card h1{
+
+    font-size:42px;
+
+    margin-bottom:10px;
+
+    color:#333;
+}
+
+.subtitulo{
+
+    color:gray;
+
+    margin-bottom:30px;
+
+    font-size:18px;
+}
+
+.form-control{
+
+    height:55px;
+
+    font-size:18px;
+
+    border-radius:12px;
+}
+
+.btn-login{
+
+    background:#4facfe;
+
+    color:white;
+
+    height:55px;
+
+    border:none;
+
+    border-radius:12px;
+
+    font-size:20px;
+
+    font-weight:bold;
+
+    transition:0.3s;
+}
+
+.btn-login:hover{
+
+    background:#2196f3;
+
+    transform:scale(1.03);
+}
+
+@keyframes aparecer{
+
+    from{
+        opacity:0;
+        transform:translateY(-20px);
+    }
+
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}

@@ -1,136 +1,385 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Inventario</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <link rel="stylesheet" href="/static/style1.css">
+
+    <!-- EXCEL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
+
 <body class="bg-light">
 
-<div class="container mt-4">
-    <h1>Gestión de Inventario</h1>
+    <div class="container mt-4">
 
-    <a href="/" class="btn btn-secondary mb-3">← Volver</a>
+        <!-- TITULO -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
 
-    <div class="row">
-        <div class="col"><input id="nombre" class="form-control" placeholder="Nombre"></div>
-        <div class="col"><input id="cantidad" type="number" class="form-control" placeholder="Cantidad"></div>
-        <div class="col"><input id="precio" type="number" class="form-control" placeholder="Precio"></div>
-        <div class="col"><button class="btn btn-success w-100" onclick="agregar()">Agregar</button></div>
+            <h1>Gestión de Inventario</h1>
+
+            <div class="d-flex gap-2">
+
+                <a href="/index" class="btn btn-secondary">
+                    ← Inicio
+                </a>
+
+                <a href="/ventas-page" class="btn btn-primary">
+                    Ir a Ventas
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- FORMULARIO PRODUCTOS -->
+        <div class="card p-4 shadow-sm mb-4">
+
+            <div class="row g-3">
+
+                <div class="col-md-3">
+                    <input
+                        id="nombre"
+                        class="form-control"
+                        placeholder="Nombre del producto"
+                    >
+                </div>
+
+                <div class="col-md-3">
+                    <input
+                        id="cantidad"
+                        type="number"
+                        class="form-control"
+                        placeholder="Cantidad"
+                    >
+                </div>
+
+                <div class="col-md-3">
+                    <input
+                        id="precio"
+                        type="number"
+                        class="form-control"
+                        placeholder="Precio"
+                    >
+                </div>
+
+                <div class="col-md-3">
+                    <button
+                        class="btn btn-success w-100"
+                        onclick="agregar()"
+                    >
+                        Agregar Producto
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- BUSCADOR -->
+        <input
+            id="buscar"
+            class="form-control mb-3"
+            placeholder="Buscar producto..."
+            onkeyup="cargar()"
+        >
+
+        <!-- BOTONES -->
+        <div class="mb-3 d-flex gap-2">
+
+            <button
+                class="btn btn-success"
+                onclick="exportarExcel()"
+            >
+                Exportar Excel
+            </button>
+
+            <button
+                class="btn btn-danger"
+                onclick="exportarPDF()"
+            >
+                Exportar PDF
+            </button>
+
+        </div>
+
+        <!-- TABLA PRODUCTOS -->
+        <div class="card p-3 shadow-sm">
+
+            <table class="table table-striped align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Cantidad</th>
+                        <th>Precio</th>
+                        <th>Acciones</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="tabla"></tbody>
+
+            </table>
+
+        </div>
+
+        <!-- HISTORIAL -->
+        <div class="card p-4 shadow-sm mt-5">
+
+            <h3 class="mb-4">Historial de movimientos</h3>
+
+            <table class="table table-bordered">
+
+                <thead class="table-secondary">
+
+                    <tr>
+                        <th>Acción</th>
+                        <th>Producto</th>
+                        <th>Fecha</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="historial"></tbody>
+
+            </table>
+
+        </div>
+
     </div>
 
-    <input id="buscar" class="form-control mt-3" placeholder="Buscar..." onkeyup="cargar()">
+    <script>
 
-    <table class="table table-striped mt-3">
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody id="tabla"></tbody>
-    </table>
+        let productosGlobal = [];
 
-    <!-- 🔥 HISTORIAL -->
-    <h3 class="mt-5">Historial de movimientos</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Acción</th>
-                <th>Producto</th>
-                <th>Fecha</th>
-            </tr>
-        </thead>
-        <tbody id="historial"></tbody>
-    </table>
+        // CARGAR PRODUCTOS
+        async function cargar() {
 
-</div>
+            const res = await fetch('/productos');
 
-<script>
-let productosGlobal = [];
+            const data = await res.json();
 
-async function cargar(){
-    const res = await fetch('/productos');
-    const data = await res.json();
-    productosGlobal = data;
+            productosGlobal = data;
 
-    const filtro = document.getElementById('buscar').value.toLowerCase();
-    const tabla = document.getElementById('tabla');
-    tabla.innerHTML = '';
+            const filtro = document
+                .getElementById('buscar')
+                .value
+                .toLowerCase();
 
-    data.forEach(p=>{
-        if(p[1].toLowerCase().includes(filtro)){
-            let color = p[2] < 5 ? 'table-danger' : '';
-            tabla.innerHTML += `
-            <tr class="${color}">
-                <td>${p[1]}</td>
-                <td>${p[2]}</td>
-                <td>$${p[3]}</td>
-                <td>
-                    <button class="btn btn-warning btn-sm" onclick="editar(${p[0]})">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="eliminar(${p[0]})">X</button>
-                </td>
-            </tr>`;
+            const tabla = document.getElementById('tabla');
+
+            tabla.innerHTML = '';
+
+            data.forEach(p => {
+
+                if (p[1].toLowerCase().includes(filtro)) {
+
+                    let color = p[2] < 5
+                        ? 'table-danger'
+                        : '';
+
+                    tabla.innerHTML += `
+                    <tr class="${color}">
+
+                        <td>${p[1]}</td>
+
+                        <td>${p[2]}</td>
+
+                        <td>$${p[3]}</td>
+
+                        <td>
+
+                            <button
+                                class="btn btn-warning btn-sm"
+                                onclick="editar(${p[0]})"
+                            >
+                                Editar
+                            </button>
+
+                            <button
+                                class="btn btn-danger btn-sm"
+                                onclick="eliminar(${p[0]})"
+                            >
+                                Eliminar
+                            </button>
+
+                        </td>
+
+                    </tr>
+                    `;
+                }
+
+            });
+
+            cargarHistorial();
         }
-    });
 
-    cargarHistorial(); // 🔥 IMPORTANTE
-}
+        // HISTORIAL
+        async function cargarHistorial() {
 
-// 🔥 HISTORIAL
-async function cargarHistorial(){
-    const res = await fetch('/historial');
-    const data = await res.json();
+            const res = await fetch('/historial');
 
-    const tabla = document.getElementById('historial');
-    tabla.innerHTML = '';
+            const data = await res.json();
 
-    data.forEach(h=>{
-        tabla.innerHTML += `
-        <tr>
-            <td>${h[1]}</td>
-            <td>${h[2]}</td>
-            <td>${h[3]}</td>
-        </tr>`;
-    });
-}
+            const tabla = document.getElementById('historial');
 
-async function agregar(){
-    const nombre = document.getElementById('nombre').value;
-    const cantidad = document.getElementById('cantidad').value;
-    const precio = document.getElementById('precio').value;
+            tabla.innerHTML = '';
 
-    await fetch('/productos',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({nombre,cantidad,precio})
-    });
+            data.forEach(h => {
 
-    cargar();
-}
+                tabla.innerHTML += `
+                <tr>
 
-async function eliminar(id){
-    await fetch('/productos/'+id,{method:'DELETE'});
-    cargar();
-}
+                    <td>${h[1]}</td>
 
-function editar(id){
-    const p = productosGlobal.find(x=>x[0]==id);
-    const nombre = prompt("Nombre", p[1]);
-    const cantidad = prompt("Cantidad", p[2]);
-    const precio = prompt("Precio", p[3]);
+                    <td>${h[2]}</td>
 
-    fetch('/productos/'+id,{
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({nombre,cantidad,precio})
-    }).then(()=>cargar());
-}
+                    <td>${h[3]}</td>
 
-cargar();
-</script>
+                </tr>
+                `;
+            });
+        }
+
+        // AGREGAR PRODUCTO
+        async function agregar() {
+
+            const nombre = document.getElementById('nombre').value;
+
+            const cantidad = document.getElementById('cantidad').value;
+
+            const precio = document.getElementById('precio').value;
+
+            if(!nombre || !cantidad || !precio){
+
+                alert('Completa todos los campos');
+
+                return;
+            }
+
+            await fetch('/productos', {
+
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify({
+                    nombre,
+                    cantidad,
+                    precio
+                })
+
+            });
+
+            document.getElementById('nombre').value = '';
+            document.getElementById('cantidad').value = '';
+            document.getElementById('precio').value = '';
+
+            cargar();
+        }
+
+        // ELIMINAR
+        async function eliminar(id) {
+
+            if(!confirm('¿Eliminar producto?')) return;
+
+            await fetch('/productos/' + id, {
+                method: 'DELETE'
+            });
+
+            cargar();
+        }
+
+        // EDITAR
+        function editar(id) {
+
+            const p = productosGlobal.find(x => x[0] == id);
+
+            const nombre = prompt("Nombre", p[1]);
+
+            const cantidad = prompt("Cantidad", p[2]);
+
+            const precio = prompt("Precio", p[3]);
+
+            fetch('/productos/' + id, {
+
+                method: 'PUT',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify({
+                    nombre,
+                    cantidad,
+                    precio
+                })
+
+            }).then(() => cargar());
+        }
+
+        // EXPORTAR EXCEL
+        function exportarExcel() {
+
+            let tabla = document.querySelector('table');
+
+            let wb = XLSX.utils.table_to_book(tabla, {
+                sheet: "Inventario"
+            });
+
+            XLSX.writeFile(wb, 'inventario.xlsx');
+        }
+
+        // EXPORTAR PDF
+        async function exportarPDF() {
+
+            const { jsPDF } = window.jspdf;
+
+            const doc = new jsPDF();
+
+            doc.text("Reporte de Inventario", 14, 15);
+
+            const filas = [];
+
+            productosGlobal.forEach(p => {
+
+                filas.push([
+                    p[1],
+                    p[2],
+                    '$' + p[3]
+                ]);
+
+            });
+
+            doc.autoTable({
+
+                head: [['Producto', 'Cantidad', 'Precio']],
+
+                body: filas,
+
+                startY: 25
+
+            });
+
+            doc.save('inventario.pdf');
+        }
+
+        cargar();
+
+    </script>
 
 </body>
+
 </html>

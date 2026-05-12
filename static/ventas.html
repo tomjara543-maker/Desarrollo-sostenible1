@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Ventas</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/ventas.css">
+
+    <!-- EXCEL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+</head>
+
+<body>
+
+<div class="container mt-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <h1>💰 Sistema de Ventas</h1>
+
+        <div class="d-flex gap-2">
+
+            <a href="/inventario" class="btn btn-secondary">
+                ← Volver Inventario
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- FORMULARIO -->
+
+    <div class="card p-4 mb-4 shadow">
+
+        <div class="row g-3">
+
+            <div class="col-md-5">
+
+                <select id="producto" class="form-select"></select>
+
+            </div>
+
+            <div class="col-md-3">
+
+                <input
+                    id="cantidad"
+                    type="number"
+                    class="form-control"
+                    placeholder="Cantidad"
+                >
+
+            </div>
+
+            <div class="col-md-4">
+
+                <button
+                    class="btn btn-success w-100"
+                    onclick="agregarCarrito()"
+                >
+                    Agregar al carrito
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TABLA CARRITO -->
+
+    <div class="card p-4 shadow">
+
+        <h3 class="mb-4">🛒 Carrito</h3>
+
+        <table class="table table-striped align-middle">
+
+            <thead class="table-dark">
+
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio</th>
+                    <th>Subtotal</th>
+                    <th>Acción</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="carrito"></tbody>
+
+        </table>
+
+        <!-- TOTAL -->
+
+        <div class="total-box">
+
+            TOTAL:
+            <span id="total">$0</span>
+
+        </div>
+
+        <!-- BOTONES -->
+
+        <div class="d-flex gap-3 mt-4">
+
+            <button
+                class="btn btn-primary"
+                onclick="finalizarVenta()"
+            >
+                Finalizar Venta
+            </button>
+
+            <button
+                class="btn btn-success"
+                onclick="generarFactura()"
+            >
+                Descargar Factura Excel
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let productos = [];
+
+let carrito = [];
+
+// CARGAR PRODUCTOS
+async function cargarProductos(){
+
+    const res = await fetch('/productos');
+
+    productos = await res.json();
+
+    const select = document.getElementById('producto');
+
+    select.innerHTML = '';
+
+    productos.forEach(p=>{
+
+        select.innerHTML += `
+            <option value="${p[0]}">
+                ${p[1]} - Stock: ${p[2]}
+            </option>
+        `;
+    });
+}
+
+// AGREGAR CARRITO
+function agregarCarrito(){
+
+    const id = document.getElementById('producto').value;
+
+    const cantidad = parseInt(
+        document.getElementById('cantidad').value
+    );
+
+    const producto = productos.find(p=>p[0]==id);
+
+    if(!cantidad || cantidad <= 0){
+
+        alert('Cantidad inválida');
+
+        return;
+    }
+
+    if(cantidad > producto[2]){
+
+        alert('Stock insuficiente');
+
+        return;
+    }
+
+    const subtotal = cantidad * producto[3];
+
+    carrito.push({
+
+        id: producto[0],
+
+        nombre: producto[1],
+
+        cantidad,
+
+        precio: producto[3],
+
+        subtotal
+
+    });
+
+    renderCarrito();
+
+    document.getElementById('cantidad').value = '';
+}
+
+// RENDER CARRITO
+function renderCarrito(){
+
+    const tabla = document.getElementById('carrito');
+
+    tabla.innerHTML = '';
+
+    let total = 0;
+
+    carrito.forEach((item,index)=>{
+
+        total += item.subtotal;
+
+        tabla.innerHTML += `
+            <tr>
+
+                <td>${item.nombre}</td>
+
+                <td>${item.cantidad}</td>
+
+                <td>$${item.precio}</td>
+
+                <td>$${item.subtotal}</td>
+
+                <td>
+
+                    <button
+                        class="btn btn-danger btn-sm"
+                        onclick="eliminarItem(${index})"
+                    >
+                        X
+                    </button>
+
+                </td>
+
+            </tr>
+        `;
+    });
+
+    document.getElementById('total').innerText =
+        '$' + total;
+}
+
+// ELIMINAR ITEM
+function eliminarItem(index){
+
+    carrito.splice(index,1);
+
+    renderCarrito();
+}
+
+// FINALIZAR VENTA
+async function finalizarVenta(){
+
+    if(carrito.length == 0){
+
+        alert('Carrito vacío');
+
+        return;
+    }
+
+    for(let item of carrito){
+
+        const res = await fetch('/ventas',{
+
+            method:'POST',
+
+            headers:{
+                'Content-Type':'application/json'
+            },
+
+            body:JSON.stringify({
+
+                producto: item.nombre.trim(),
+
+                cantidad: parseInt(item.cantidad)
+
+            })
+
+        });
+
+        const data = await res.json();
+
+        console.log(data);
+    }
+
+    generarFactura();
+
+    alert('Venta realizada correctamente');
+
+    carrito = [];
+
+    renderCarrito();
+
+    cargarProductos();
+}
+
+// FACTURA EXCEL
+function generarFactura(){
+
+    if(carrito.length == 0){
+
+        alert('No hay productos');
+
+        return;
+    }
+
+    let datos = [
+
+        ["FACTURA"],
+
+        [],
+
+        ["Producto", "Cantidad", "Precio", "Subtotal"]
+
+    ];
+
+    let total = 0;
+
+    carrito.forEach(item=>{
+
+        datos.push([
+
+            item.nombre,
+
+            item.cantidad,
+
+            item.precio,
+
+            item.subtotal
+
+        ]);
+
+        total += item.subtotal;
+    });
+
+    datos.push([]);
+
+    datos.push(["", "", "TOTAL", total]);
+
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, ws, "Factura");
+
+    XLSX.writeFile(wb, "factura.xlsx");
+}
+
+cargarProductos();
+
+</script>
+
+</body>
+
+</html>
